@@ -3,7 +3,22 @@ class Intel8080 {
         this.memory = new Uint8Array(65536);
         this.reset();
     }
-
+attachFPU(fpu) {
+        this.fpu = fpu;
+    }
+      portIn(port) {
+        if (this.fpu && (port === 0xF0 || port === 0xF1)) {
+            return port === 0xF0 ? this.fpu.readData() : this.fpu.readControl();
+        }
+        return 0xFF;
+    }
+   portOut(port, value) {
+        if (this.fpu && (port === 0xF0 || port === 0xF1)) {
+            if (port === 0xF0) this.fpu.writeData(value);
+            else this.fpu.writeControl(value);
+        }
+    }
+    
     reset() {
         this.registers = {
             a: 0,
@@ -266,6 +281,17 @@ class Intel8080 {
             case 0x3F: this.flags.cy = !this.flags.cy; break; // CMC
 
             // Special
+                            // Special
+            case 0xDB: { // IN — lee un byte del puerto hacia el acumulador
+                const port = this.fetch();
+                this.registers.a = this.portIn(port);
+                break;
+            }
+            case 0xD3: { // OUT — escribe el acumulador en el puerto
+                const port = this.fetch();
+                this.portOut(port, this.registers.a);
+                break;
+            }
             case 0xDB: this.fetch(); break; // IN (Ignored for now)
             case 0xD3: this.fetch(); break; // OUT (Ignored for now)
             case 0xFB: break; // EI
